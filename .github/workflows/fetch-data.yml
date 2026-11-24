@@ -1,0 +1,27 @@
+name: Hae linjadata
+on:
+  workflow_dispatch: {}
+  push:
+    paths: ['.github/workflows/fetch-data.yml']
+permissions:
+  contents: write
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Hae reitit CTAN-rajapinnasta
+        run: |
+          mkdir -p raw
+          for id in 19 20 109 297; do
+            curl -sf --retry 3 "https://api.ctan.es/v1/Consorcios/4/lineas/$id" -o "raw/linea_$id.json" || echo "fail $id"
+            curl -sf --retry 3 "https://api.ctan.es/v1/Consorcios/4/lineas/$id/paradas" -o "raw/paradas_$id.json" || echo "fail paradas $id"
+          done
+          ls -la raw
+      - name: Tallenna
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add raw
+          git commit -m "Linjadata CTAN-rajapinnasta" || echo "ei muutoksia"
+          git push
