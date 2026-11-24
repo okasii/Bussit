@@ -139,6 +139,7 @@ footer a,.note a{color:var(--blue2)}
 </main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="shapes.js"></script>
 <script>
 {
 const STOPS={858:['C.A.R.E.',36.71325,-4.424128],149:['Terminal Muelle Heredia',36.716217,-4.420472],859:['Parque San Antonio',36.722122,-4.396894],861:['Baños del Carmen',36.721333,-4.378658],471:['Las Acacias',36.719981,-4.367656],863:['El Palo',36.718875,-4.357317],865:['El Tintero II',36.717111,-4.348372],867:['Gasolinera El Candado',36.713836,-4.342525],869:['La Araña',36.713122,-4.325783],871:['Don Miguel (La Cala)',36.715033,-4.312106],873:['Iglesia La Cala (Serramar)',36.715297,-4.307847],875:['Gasolinera La Cala (Calaflores)',36.715894,-4.304081],877:['Cantal Bajo (Cueva del Tesoro)',36.714572,-4.296725],879:['Posada del Mar (La Aurora)',36.716111,-4.292092],881:['Iglesia (Rincón)',36.71545,-4.288486],883:['Jardines de la Estación (Cruz Roja)',36.714739,-4.282983],905:['Gran Sol (Cotomar)',36.717647,-4.280175],886:['Instituto',36.718492,-4.278483],887:['El Rosal',36.720606,-4.275339],888:['Tres Sietes',36.722361,-4.274869],889:['Plaza Costa del Sol',36.717506,-4.277008],890:['La Vaguada',36.716931,-4.272611],891:['Lo Cea',36.715858,-4.270217],892:['Ceuta y Melilla',36.713794,-4.272633],893:['Rincón Sol',36.71465,-4.280592],884:['Ayuntamiento',36.715161,-4.285214],882:['Iglesia (Rincón)',36.715892,-4.28945],880:['Posada del Mar (La Aurora)',36.716225,-4.291986],878:['Cantal Bajo (Cueva del Tesoro)',36.714586,-4.297356],876:['Gasolinera La Cala (Calaflores)',36.715944,-4.304486],874:['Iglesia La Cala (Serramar)',36.715461,-4.308575],872:['Don Miguel (La Cala)',36.715178,-4.311803],870:['La Araña',36.713222,-4.325722],868:['Gasolinera El Candado',36.715256,-4.344553],866:['Entrada Candado',36.719464,-4.351058],864:['El Palo',36.721033,-4.360156],862:['Baños del Carmen',36.721944,-4.382361],860:['Parque San Antonio',36.722253,-4.397003],904:['Terminal Muelle Heredia',36.716611,-4.420703],1644:['Paseo de los Curas',36.718731,-4.415278],1645:['Paseo de los Curas',36.718728,-4.415672],894:['Elimar',36.713875,-4.275475],896:['Gasolinera (Torre)',36.712597,-4.265139],1717:['Pepa Flores',36.71205,-4.259597],898:['La Marina (Torre de Benagalbón)',36.711731,-4.252567],900:['Cruce Macharaviaya',36.712294,-4.243808],902:['Los Rubios',36.712694,-4.236256],903:['Los Rubios',36.712864,-4.23635],901:['Cruce Macharaviaya',36.712292,-4.244936],899:['Cuartel (Torre de Benagalbón)',36.711733,-4.2555],897:['C/ Villodres (Gasolinera)',36.712561,-4.263267],895:['Elimar',36.713961,-4.275364],468:['Estación de Autobuses',36.712692,-4.433686],1019:['Entrada La Cala',36.715781,-4.316594],1021:['C.C. Rincón de la Victoria',36.723019,-4.314175],1023:['Jardines de la Victoria',36.72585,-4.314819],1025:['Riosol',36.727169,-4.315342],1722:['Las Tres Marías',36.730892,-4.318128],1026:['Lagar del Saltillo',36.738411,-4.314667],1028:['Lagar Caliche',36.741736,-4.31395],1030:['Kiosco de los Enamorados',36.750783,-4.313672],1032:['La Pepa',36.754439,-4.305806],1033:['Los Castillos I',36.756511,-4.303772],1036:['Los Baltasares',36.760428,-4.303608],1037:['La Huerta',36.765144,-4.29965],1039:['Totalán',36.766169,-4.298089],1038:['La Huerta',36.765156,-4.299717],1721:['Los Baltasares',36.760733,-4.303781],1035:['Los Castillos II',36.758925,-4.303625],1034:['Los Castillos I',36.756394,-4.304011],1040:['La Pepa',36.755567,-4.305697],1031:['Kiosco de los Enamorados',36.750494,-4.314278],1029:['Lagar Caliche',36.742444,-4.314281],1027:['Lagar del Saltillo',36.738239,-4.314803],1041:['Riosol',36.727203,-4.315483],1024:['Jardines de la Victoria',36.725022,-4.314983],1022:['C.C. Rincón de la Victoria',36.722489,-4.314061]};
@@ -476,7 +477,15 @@ const fmt=m=>{m=Math.round(m)%1440;return String(Math.floor(m/60)).padStart(2,'0
 
 // build line-direction structures
 for(const L of LINES)for(const d of ['r','m']){const D=L.dirs[d];
-  D.cum=[0];for(let i=1;i<D.seq.length;i++)D.cum.push(D.cum[i-1]+km(STOPS[D.seq[i-1]],STOPS[D.seq[i]]));
+  const sh=(window.SHAPES&&SHAPES[L.id]&&SHAPES[L.id][d])||null;
+  if(sh&&sh.length>1){D.shape=sh;D.scum=[0];for(let i=1;i<sh.length;i++)D.scum.push(D.scum[i-1]+km(['',...sh[i-1]],['',...sh[i]]));
+    // project each stop onto the route, moving forward only (routes can loop back past the same street)
+    let from=0,fromC=0;D.cum=D.seq.map(id=>{const s=STOPS[id],px=s[2]*89.24,py=s[1]*110.95;let bd=1e9,bj=from,bc=fromC;
+      for(let j=Math.max(1,from);j<sh.length;j++){const ax=sh[j-1][1]*89.24,ay=sh[j-1][0]*110.95,bx=sh[j][1]*89.24,by=sh[j][0]*110.95,dx=bx-ax,dy=by-ay,l2=dx*dx+dy*dy;
+        let t=l2?((px-ax)*dx+(py-ay)*dy)/l2:0;t=Math.max(0,Math.min(1,t));const c=D.scum[j-1]+t*(D.scum[j]-D.scum[j-1]);
+        if(c<fromC)continue;const dd=Math.hypot(ax+t*dx-px,ay+t*dy-py);if(dd<bd){bd=dd;bj=j;bc=c}if(bd<0.06&&dd>bd+0.4)break}
+      from=bj;fromC=bc;return bc})}
+  else{D.shape=D.seq.map(id=>[STOPS[id][1],STOPS[id][2]]);D.cum=[0];for(let i=1;i<D.seq.length;i++)D.cum.push(D.cum[i-1]+km(STOPS[D.seq[i-1]],STOPS[D.seq[i]]));D.scum=D.cum.slice()}
   D.tpi=D.tp.map(id=>D.seq.indexOf(id));
   D.trips=D.rows.trim().split('\n').map((r,n)=>{const p=r.trim().split(/\s+/);const code=p.pop();
     if(p.length!==D.tp.length){console.warn('bad row',L.id,d,r);return null}
@@ -508,8 +517,8 @@ function posAt(tr,m){const D=tr.D,ks=tr.t.map((v,k)=>v==null?-1:k).filter(k=>k>=
   if(m<tr.t[ks[0]]||m>tr.t[ks[ks.length-1]])return null;
   for(let i=0;i<ks.length-1;i++){const a=ks[i],b=ks[i+1];if(m>=tr.t[a]&&m<=tr.t[b]){
     const f=tr.t[b]>tr.t[a]?(m-tr.t[a])/(tr.t[b]-tr.t[a]):1,dist=D.cum[D.tpi[a]]+f*(D.cum[D.tpi[b]]-D.cum[D.tpi[a]]);
-    let j=1;while(j<D.cum.length-1&&D.cum[j]<dist)j++;const s0=STOPS[D.seq[j-1]],s1=STOPS[D.seq[j]],seg=D.cum[j]-D.cum[j-1],g=seg?(dist-D.cum[j-1])/seg:0;
-    return{lat:s0[1]+g*(s1[1]-s0[1]),lon:s0[2]+g*(s1[2]-s0[2]),next:b}}}return null}
+    const C=D.scum,P=D.shape;let j=1;while(j<C.length-1&&C[j]<dist)j++;const seg=C[j]-C[j-1],g=seg?Math.min(1,Math.max(0,(dist-C[j-1])/seg)):0;
+    return{lat:P[j-1][0]+g*(P[j][0]-P[j-1][0]),lon:P[j-1][1]+g*(P[j][1]-P[j-1][1]),next:b}}}return null}
 function nearest(D,id){const s=STOPS[id];let bi=-1,bd=1e9;D.seq.forEach((x,i)=>{const d=km(s,STOPS[x]);if(d<bd){bd=d;bi=i}});return bd<=0.7?bi:-1}
 
 function departures(){const n=now(),f=flags(n.dt),out=[];const o=originId(),t=st.dir==='m'?st.mal:st.home;
@@ -551,7 +560,7 @@ const routeLayer=L.layerGroup().addTo(map),stopLayer=L.layerGroup().addTo(map),b
 let buses=new Map();
 function drawStatic(){routeLayer.clearLayers();stopLayer.clearLayers();
   for(const L2 of [...LINES].reverse())for(const d of ['m','r']){const D=L2.dirs[d];
-    L.polyline(D.seq.map(id=>[STOPS[id][1],STOPS[id][2]]),{color:L2.color,weight:L2.id==='M-163'?8:L2.dash?3:5,opacity:.85,dashArray:L2.dash?'5 7':null,interactive:false}).addTo(routeLayer)}
+    L.polyline(D.shape,{color:L2.color,weight:L2.id==='M-163'?8:L2.dash?3:5,opacity:.85,dashArray:L2.dash?'5 7':null,interactive:false}).addTo(routeLayer)}
   const orig=originId();
   for(const id in STOPS){const s=STOPS[id],isH=+id===st.home,isM=+id===st.mal,isO=+id===orig;
     const m=L.circleMarker([s[1],s[2]],{radius:isH||isM||isO?8:5,color:isH||isM||isO?'#fff':'#0f1b2d',weight:isH||isM?3:1.5,fillColor:isO?'#f59e0b':isH?'#0a8f3c':isM?'#0b3d91':'#fff',fillOpacity:1}).addTo(stopLayer);
